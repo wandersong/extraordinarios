@@ -180,7 +180,6 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
             </div>
             <div>
               <h1 className="text-lg font-semibold text-white">Mentoria Extraordinários</h1>
-              <p className="text-sm text-zinc-400">Chat Multi-Agente IA - {userData?.name || 'Usuário'}</p>
             </div>
           </div>
           <Button

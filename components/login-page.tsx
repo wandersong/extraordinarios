@@ -10,17 +10,15 @@ import Image from "next/image"
 import { useAuth } from '@/contexts/auth-context'
 
 export function LoginPage() {
-  const [isSignUp, setIsSignUp] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    name: ''
+    password: ''
   })
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  const { signIn, signUp } = useAuth()
+  const { signIn } = useAuth()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -37,36 +35,16 @@ export function LoginPage() {
     setIsLoading(true)
 
     try {
-      if (isSignUp) {
-        if (!formData.name.trim()) {
-          setError('Nome é obrigatório')
-          setIsLoading(false)
-          return
-        }
-        
-        const { error } = await signUp(formData.email, formData.password, formData.name)
-        
-        if (error) {
-          setError(error.message || 'Erro ao criar conta')
-        }
-      } else {
-        const { error } = await signIn(formData.email, formData.password)
-        
-        if (error) {
-          setError(error.message || 'Email ou senha incorretos')
-        }
+      const { error } = await signIn(formData.email, formData.password)
+      
+      if (error) {
+        setError(error.message || 'Email ou senha incorretos')
       }
     } catch (err) {
       setError('Ocorreu um erro inesperado')
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const toggleMode = () => {
-    setIsSignUp(!isSignUp)
-    setError(null)
-    setFormData({ email: '', password: '', name: '' })
   }
 
   return (
@@ -89,14 +67,8 @@ export function LoginPage() {
           {/* Title */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">
-              {isSignUp ? 'Criar Conta' : 'Bem-vindo'}
+              Bem-vindo
             </h1>
-            <p className="text-zinc-400">
-              {isSignUp 
-                ? 'Cadastre-se na Mentoria Extraordinários' 
-                : 'Entre para acessar a Mentoria Extraordinários'
-              }
-            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -106,22 +78,7 @@ export function LoginPage() {
               </Alert>
             )}
 
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-white">Nome Completo</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  type="text"
-                  placeholder="Seu nome completo"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required={isSignUp}
-                  disabled={isLoading}
-                  className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500"
-                />
-              </div>
-            )}
+
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-white">Email</Label>
@@ -178,28 +135,13 @@ export function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isSignUp ? 'Criando conta...' : 'Entrando...'}
+                  Entrando...
                 </>
               ) : (
-                isSignUp ? 'Criar Conta' : 'Entrar'
+                'Entrar'
               )}
             </Button>
-
-            <Button 
-              type="button"
-              variant="outline" 
-              className="w-full border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white"
-              onClick={toggleMode}
-              disabled={isLoading}
-            >
-              {isSignUp ? 'Já tenho conta - Entrar' : 'Não tenho conta - Cadastrar'}
-            </Button>
           </form>
-
-          {/* Footer */}
-          <p className="text-center text-sm text-zinc-500 mt-6">
-            Mentoria Extraordinários - Chat Multi-Agente IA
-          </p>
         </div>
       </div>
     </div>
