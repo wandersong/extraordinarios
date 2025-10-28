@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Send, LogOut, Loader2 } from "lucide-react"
 import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
+import Image from 'next/image'
 
 interface Message {
   id: string
@@ -34,6 +35,18 @@ export function ChatPage({ userId, userData }: ChatPageProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { signOut } = useAuth()
 
+  // Loading state enquanto userData não está disponível
+  if (!userData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin text-[#D4AF37]" />
+          <span className="text-white">Carregando...</span>
+        </div>
+      </div>
+    )
+  }
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
@@ -45,10 +58,15 @@ export function ChatPage({ userId, userData }: ChatPageProps) {
   // Carregar mensagem de boas-vindas
   useEffect(() => {
     const loadWelcomeMessage = () => {
+      const userName = userData?.name || 'Usuário'
       const welcomeMessage: Message = {
         id: 'welcome',
         role: 'assistant',
-        content: `Olá ${userData.name}! Bem-vindo à Mentoria Extraordinários. Como posso ajudá-lo hoje?`,
+        content: `🎯 Olá ${userName}! Bem-vindo à **Mentoria Extraordinários**!
+
+Sou seu assistente de IA especializado em transformar pessoas extraordinárias em versões ainda mais extraordinárias. Estou aqui para ajudá-lo a sair do ponto A e chegar ao seu ponto B.
+
+Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
         timestamp: new Date()
       }
       setMessages([welcomeMessage])
@@ -56,7 +74,7 @@ export function ChatPage({ userId, userData }: ChatPageProps) {
     }
 
     loadWelcomeMessage()
-  }, [userData.name])
+  }, [userData?.name])
 
   const handleLogout = async () => {
     try {
@@ -82,9 +100,9 @@ export function ChatPage({ userId, userData }: ChatPageProps) {
           userId,
           message,
           userData: {
-            name: userData.name,
-            email: userData.email,
-            role: userData.role
+            name: userData?.name || 'Usuário',
+            email: userData?.email || '',
+            role: userData?.role || 'normal'
           }
         }),
       })
@@ -152,13 +170,17 @@ export function ChatPage({ userId, userData }: ChatPageProps) {
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="relative w-10 h-10">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#D4AF37] to-[#F4D03F] rounded-full flex items-center justify-center">
-                <span className="text-sm font-bold text-zinc-900">ME</span>
-              </div>
+              <Image
+                src="/logo.png"
+                alt="Mentoria Extraordinários"
+                width={40}
+                height={40}
+                className="rounded-full object-cover border-2 border-[#D4AF37]"
+              />
             </div>
             <div>
               <h1 className="text-lg font-semibold text-white">Mentoria Extraordinários</h1>
-              <p className="text-sm text-zinc-400">Chat Multi-Agente IA - {userData.name}</p>
+              <p className="text-sm text-zinc-400">Chat Multi-Agente IA - {userData?.name || 'Usuário'}</p>
             </div>
           </div>
           <Button
@@ -179,12 +201,17 @@ export function ChatPage({ userId, userData }: ChatPageProps) {
           {messages.length === 0 && !loadingMessages && (
             <div className="text-center py-12">
               <div className="relative w-24 h-24 mx-auto mb-6 opacity-50">
-                <div className="w-24 h-24 bg-gradient-to-br from-[#D4AF37] to-[#F4D03F] rounded-full flex items-center justify-center">
-                  <span className="text-xl font-bold text-zinc-900">ME</span>
-                </div>
+                <Image
+                  src="/logo.png"
+                  alt="Mentoria Extraordinários"
+                  width={96}
+                  height={96}
+                  className="rounded-full object-cover border-4 border-[#D4AF37]/30"
+                />
               </div>
-              <h2 className="text-2xl font-semibold text-white mb-2">Olá {userData.name}! Como posso ajudar?</h2>
-              <p className="text-zinc-400">Envie uma mensagem para começar nossa conversa</p>
+              <h2 className="text-2xl font-semibold text-white mb-2">Olá {userData?.name || 'Usuário'}! 🎯</h2>
+              <p className="text-zinc-400">Seja bem-vindo à Mentoria Extraordinários!</p>
+              <p className="text-zinc-400 mt-1">Envie uma mensagem para começar sua jornada extraordinária 🚀</p>
             </div>
           )}
 

@@ -76,9 +76,13 @@ export function LoginPage() {
           {/* Logo */}
           <div className="flex justify-center mb-8">
             <div className="relative w-24 h-24">
-              <div className="w-24 h-24 bg-gradient-to-br from-[#D4AF37] to-[#F4D03F] rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-zinc-900">ME</span>
-              </div>
+              <Image
+                src="/logo.png"
+                alt="Mentoria Extraordinários"
+                width={96}
+                height={96}
+                className="rounded-full object-cover border-4 border-[#D4AF37]"
+              />
             </div>
           </div>
 

@@ -45,6 +45,61 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Função para buscar dados do usuário na tabela users
+  const fetchUserData = async (userId: string, email: string, name: string) => {
+    try {
+      // Tentar buscar usuário na tabela users
+      const { data: existingUser, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (existingUser && !error) {
+        // Usuário encontrado na tabela
+        setUserData(existingUser)
+      } else {
+        // Usuário não encontrado, criar dados com informações do auth
+        const newUserData: UserData = {
+          id: userId,
+          email: email,
+          name: name,
+          role: 'normal',
+          avatar_url: undefined,
+          is_active: true,
+          metadata: { createdFromAuth: true },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        setUserData(newUserData)
+
+        // Opcionalmente, tentar inserir na tabela users (se as políticas permitirem)
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([newUserData])
+
+        if (insertError) {
+          console.warn('Não foi possível inserir usuário na tabela:', insertError)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao buscar dados do usuário:', error)
+      // Fallback para dados mock em caso de erro
+      const fallbackUserData: UserData = {
+        id: userId,
+        email: email,
+        name: name,
+        role: 'normal',
+        avatar_url: undefined,
+        is_active: true,
+        metadata: {},
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      setUserData(fallbackUserData)
+    }
+  }
+
   useEffect(() => {
     // Verificar sessão inicial
     const getInitialSession = async () => {
@@ -52,19 +107,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       if (session?.user) {
         setUser(session.user)
-        // Por enquanto, criar dados mock do usuário
-        const mockUserData: UserData = {
-          id: session.user.id,
-          email: session.user.email || '',
-          name: session.user.user_metadata?.name || 'Usuário',
-          role: 'normal',
-          avatar_url: undefined,
-          is_active: true,
-          metadata: {},
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-        setUserData(mockUserData)
+        // Buscar dados reais do usuário da tabela
+        await fetchUserData(session.user.id, session.user.email || '', session.user.user_metadata?.name || 'Usuário')
       }
       
       setLoading(false)
@@ -79,18 +123,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         if (session?.user) {
           setUser(session.user)
-          const mockUserData: UserData = {
-            id: session.user.id,
-            email: session.user.email || '',
-            name: session.user.user_metadata?.name || 'Usuário',
-            role: 'normal',
-            avatar_url: undefined,
-            is_active: true,
-            metadata: {},
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-          setUserData(mockUserData)
+          // Buscar dados reais do usuário da tabela
+          await fetchUserData(session.user.id, session.user.email || '', session.user.user_metadata?.name || 'Usuário')
         } else {
           setUser(null)
           setUserData(null)
