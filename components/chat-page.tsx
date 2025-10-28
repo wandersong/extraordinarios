@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { useMessages } from '@/hooks/use-messages-cache'
+import { TestSupabaseConnection } from './test-supabase'
 
 interface Message {
   id: string
@@ -218,6 +219,11 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
           </Button>
         </div>
       </header>
+
+      {/* Debug Panel - Remover em produção */}
+      <div className="px-6 py-4 border-b border-zinc-800">
+        <TestSupabaseConnection />
+      </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-8">

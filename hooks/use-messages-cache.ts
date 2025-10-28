@@ -50,11 +50,14 @@ export function useMessages(userId: string) {
 
   // Sincronizar mensagens com o Supabase
   const syncWithSupabase = async (msgs: Message[]) => {
-    if (!userId || msgs.length === 0) return
+    if (!userId || msgs.length === 0) {
+      console.log('🔴 Sync cancelado: userId=', userId, 'msgs.length=', msgs.length)
+      return false
+    }
 
     setIsSyncing(true)
     try {
-      console.log('Sincronizando', msgs.length, 'mensagens com Supabase...')
+      console.log('🔄 Iniciando sync de', msgs.length, 'mensagens para userId:', userId)
       
       // Preparar mensagens para o banco (formato esperado pelo Supabase)
       const dbMessages = msgs.map(msg => ({
@@ -68,20 +71,28 @@ export function useMessages(userId: string) {
         }
       }))
 
-      // Tentar salvar no Supabase
-      const { error } = await supabase
+      console.log('📋 Dados preparados para Supabase:', { user_id: userId, messages: dbMessages.length })
+
+      // Tentar salvar no Supabase usando upsert com onConflict
+      const { data, error } = await supabase
         .from('user_messages')
         .upsert({
           user_id: userId,
           messages: dbMessages,
-          last_message_at: new Date().toISOString()
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
         })
+        .select()
 
       if (error) {
-        console.error('Erro ao sincronizar com Supabase:', error)
+        console.error('❌ Erro ao sincronizar com Supabase:', error)
+        console.error('❌ Detalhes do erro:', error.message, error.code, error.details)
         return false
       } else {
-        console.log('Mensagens sincronizadas com sucesso!')
+        console.log('✅ Mensagens sincronizadas com sucesso!')
+        console.log('✅ Dados retornados:', data)
         
         // Marcar mensagens como sincronizadas
         const syncedMessages = msgs.map(msg => ({ ...msg, synced: true }))
@@ -90,7 +101,7 @@ export function useMessages(userId: string) {
         return true
       }
     } catch (error) {
-      console.error('Erro na sincronização:', error)
+      console.error('💥 Erro na sincronização (catch):', error)
       return false
     } finally {
       setIsSyncing(false)
