@@ -122,16 +122,37 @@ export function useMessages(userId: string) {
         setMessages(localMessages)
         setIsLoading(false) // Parar loading imediatamente se tem mensagens locais
         
-        // Tentar sincronizar com Supabase em background
-        setTimeout(() => {
-          syncFromSupabase(localMessages)
-        }, 500)
+        // NÃO fazer sync automático para evitar sobrescrever mensagens recém-adicionadas
+        console.log('📂 Usando mensagens locais, sync automático desabilitado para evitar conflitos')
         return
       }
 
-      // 2. Se não tem mensagens locais, tentar carregar do Supabase
+      // 2. Se não tem mensagens locais, carregar do Supabase
       console.log('Tentando carregar do Supabase...')
-      await syncFromSupabase([])
+      try {
+        const { data: supabaseData, error } = await supabase
+          .from('user_messages')
+          .select('messages')
+          .eq('user_id', userId)
+          .single()
+
+        if (!error && supabaseData?.messages) {
+          const dbMessages = supabaseData.messages as any[]
+          const formattedMessages: Message[] = dbMessages.map((msg: any) => ({
+            id: msg.id || Date.now().toString(),
+            role: (msg.type === 'user' ? 'user' : 'assistant') as 'user' | 'assistant' | 'system',
+            content: msg.content,
+            timestamp: new Date(msg.timestamp),
+            synced: true
+          })).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+          
+          console.log('📂 Carregou', formattedMessages.length, 'mensagens do Supabase')
+          setMessages(formattedMessages)
+          saveLocalMessages(formattedMessages)
+        }
+      } catch (error) {
+        console.log('Erro ao carregar do Supabase:', error)
+      }
 
     } catch (error) {
       console.error('Erro ao carregar mensagens:', error)
@@ -167,12 +188,23 @@ export function useMessages(userId: string) {
           synced: true
         })).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
 
-        // Usar mensagens do Supabase se forem mais recentes ou em maior quantidade
-        if (formattedMessages.length > currentMessages.length) {
-          console.log('Usando mensagens do Supabase (mais recentes)')
-          setMessages(formattedMessages)
-          saveLocalMessages(formattedMessages)
-        }
+        // Mesclar mensagens do Supabase com mensagens locais (evitar sobrescrever)
+        const localMessages = loadLocalMessages()
+        const allMessages = [...formattedMessages]
+        
+        // Adicionar mensagens locais que não estão no Supabase
+        localMessages.forEach(localMsg => {
+          if (!formattedMessages.find(dbMsg => dbMsg.id === localMsg.id)) {
+            allMessages.push(localMsg)
+          }
+        })
+        
+        // Ordenar por timestamp
+        const sortedMessages = allMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+        
+        console.log('📊 Mesclando mensagens: Supabase=', formattedMessages.length, 'Local=', localMessages.length, 'Total=', sortedMessages.length)
+        setMessages(sortedMessages)
+        saveLocalMessages(sortedMessages)
       }
     } catch (error) {
       console.log('Erro na sincronização com Supabase:', error)
@@ -199,11 +231,11 @@ export function useMessages(userId: string) {
     console.log('🔵 Salvando no localStorage...')
     saveLocalMessages(updatedMessages)
 
-    // 3. Sincronizar com Supabase em background
+    // 3. Sincronizar com Supabase em background (com delay maior)
     setTimeout(() => {
       console.log('🔵 Iniciando sync com Supabase...')
       syncWithSupabase(updatedMessages)
-    }, 100) // Pequeno delay para não bloquear a UI
+    }, 1000) // 1 segundo de delay para evitar conflitos
 
     return newMessage
   }

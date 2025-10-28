@@ -10,7 +10,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { useMessages } from '@/hooks/use-messages-cache'
-import { TestSupabaseConnection } from './test-supabase'
 
 interface Message {
   id: string
@@ -123,10 +122,12 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
 
     try {
       // 1. Adicionar mensagem do usuário primeiro
-      await addMessage({
+      console.log('🟢 Adicionando mensagem do usuário:', messageToSend)
+      const userMessage = await addMessage({
         role: 'user',
         content: messageToSend
       })
+      console.log('🟢 Mensagem do usuário adicionada:', userMessage)
 
       // 2. Enviar diretamente para o webhook externo (n8n)
       const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://webhook.digabot.com.br/webhook/cfdf2bf1-e1cf-4fa3-adda-7e663aad2961'
@@ -219,11 +220,6 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
           </Button>
         </div>
       </header>
-
-      {/* Debug Panel - Remover em produção */}
-      <div className="px-6 py-4 border-b border-zinc-800">
-        <TestSupabaseConnection />
-      </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-8">
