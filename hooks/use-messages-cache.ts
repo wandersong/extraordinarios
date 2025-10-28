@@ -19,16 +19,20 @@ export function useMessages(userId: string) {
   // Carregar mensagens do localStorage
   const loadLocalMessages = (): Message[] => {
     try {
+      console.log('📂 Tentando carregar mensagens do localStorage:', STORAGE_KEY)
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
+        console.log('📂 Encontrou', parsed.length, 'mensagens no cache local')
         return parsed.map((msg: any) => ({
           ...msg,
           timestamp: new Date(msg.timestamp)
         }))
+      } else {
+        console.log('📂 Nenhuma mensagem encontrada no cache local')
       }
     } catch (error) {
-      console.error('Erro ao carregar mensagens locais:', error)
+      console.error('❌ Erro ao carregar mensagens locais:', error)
     }
     return []
   }
@@ -36,9 +40,11 @@ export function useMessages(userId: string) {
   // Salvar mensagens no localStorage
   const saveLocalMessages = (msgs: Message[]) => {
     try {
+      console.log('💾 Salvando', msgs.length, 'mensagens no localStorage')
       localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs))
+      console.log('💾 Salvo com sucesso!')
     } catch (error) {
-      console.error('Erro ao salvar mensagens locais:', error)
+      console.error('❌ Erro ao salvar mensagens locais:', error)
     }
   }
 
@@ -164,6 +170,8 @@ export function useMessages(userId: string) {
 
   // Adicionar nova mensagem
   const addMessage = async (message: Omit<Message, 'id' | 'timestamp' | 'synced'>) => {
+    console.log('🔵 addMessage chamado:', message)
+    
     const newMessage: Message = {
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       timestamp: new Date(),
@@ -173,13 +181,16 @@ export function useMessages(userId: string) {
 
     // 1. Adicionar ao estado imediatamente
     const updatedMessages = [...messages, newMessage]
+    console.log('🔵 Atualizando state com', updatedMessages.length, 'mensagens')
     setMessages(updatedMessages)
 
     // 2. Salvar no localStorage imediatamente
+    console.log('🔵 Salvando no localStorage...')
     saveLocalMessages(updatedMessages)
 
     // 3. Sincronizar com Supabase em background
     setTimeout(() => {
+      console.log('🔵 Iniciando sync com Supabase...')
       syncWithSupabase(updatedMessages)
     }, 100) // Pequeno delay para não bloquear a UI
 

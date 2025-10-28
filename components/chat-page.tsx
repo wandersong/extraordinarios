@@ -39,7 +39,8 @@ export function ChatPage({ userId, userData }: ChatPageProps) {
     messages, 
     isLoading: loadingMessages, 
     isSyncing, 
-    addConversation 
+    addConversation,
+    addMessage 
   } = useMessages(userId)
 
   // Timeout de emergência para parar loading se algo der errado
@@ -95,7 +96,10 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
       }
       
       // Adicionar mensagem usando o hook
-      addConversation('', welcomeMessage.content)
+      addMessage({
+        role: 'assistant',
+        content: welcomeMessage.content
+      })
     }
   }, [loadingMessages, messages.length, userData?.name, userId, addConversation])
 
@@ -117,8 +121,11 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
     setIsLoading(true)
 
     try {
-      // 1. Adicionar mensagem do usuário imediatamente ao cache local
-      await addConversation(messageToSend, "")
+      // 1. Adicionar mensagem do usuário primeiro
+      await addMessage({
+        role: 'user',
+        content: messageToSend
+      })
 
       // 2. Enviar diretamente para o webhook externo (n8n)
       const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://webhook.digabot.com.br/webhook/cfdf2bf1-e1cf-4fa3-adda-7e663aad2961'
@@ -145,8 +152,11 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
         const data = await response.json()
 
         if (data.output) {
-          // 3. Adicionar resposta da IA ao cache local (substitui a mensagem vazia)
-          await addConversation(messageToSend, data.output)
+          // 3. Adicionar resposta da IA
+          await addMessage({
+            role: 'assistant',
+            content: data.output
+          })
         }
       } else {
         throw new Error(`Erro na resposta do webhook: ${response.status}`)
@@ -156,7 +166,10 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
       toast.error('Erro ao processar mensagem')
 
       // Adicionar mensagem de erro
-      await addConversation(messageToSend, "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.")
+      await addMessage({
+        role: 'assistant',
+        content: "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente."
+      })
     } finally {
       setIsLoading(false)
     }
