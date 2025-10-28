@@ -9,6 +9,7 @@ import { Send, LogOut, Loader2 } from "lucide-react"
 import { useAuth } from '@/contexts/auth-context'
 import { toast } from 'sonner'
 import Image from 'next/image'
+import { useMessages } from '@/hooks/use-messages-cache'
 
 interface Message {
   id: string
@@ -28,12 +29,31 @@ interface ChatPageProps {
 }
 
 export function ChatPage({ userId, userData }: ChatPageProps) {
-  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [loadingMessages, setLoadingMessages] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { signOut } = useAuth()
+  
+  // Usar hook de cache local + Supabase
+  const { 
+    messages, 
+    isLoading: loadingMessages, 
+    isSyncing, 
+    addConversation 
+  } = useMessages(userId)
+
+  // Timeout de emergência para parar loading se algo der errado
+  useEffect(() => {
+    if (loadingMessages && userId) {
+      const timeout = setTimeout(() => {
+        console.log('Timeout de emergência - forçando parada do loading')
+        // Se ainda está carregando após 10 segundos, algo deu errado
+        window.location.reload()
+      }, 10000) // 10 segundos
+
+      return () => clearTimeout(timeout)
+    }
+  }, [loadingMessages, userId])
 
   // Loading state enquanto userData não está disponível
   if (!userData) {
@@ -55,12 +75,16 @@ export function ChatPage({ userId, userData }: ChatPageProps) {
     scrollToBottom()
   }, [messages])
 
-  // Carregar mensagem de boas-vindas
+  // Criar mensagem de boas-vindas se não houver mensagens após carregar
   useEffect(() => {
-    const loadWelcomeMessage = () => {
+    console.log('ChatPage - useEffect boas-vindas:', { loadingMessages, messagesLength: messages.length, userId })
+    
+    if (!loadingMessages && messages.length === 0 && userId) {
+      console.log('Criando mensagem de boas-vindas')
+      
       const userName = userData?.name || 'Usuário'
       const welcomeMessage: Message = {
-        id: 'welcome',
+        id: 'welcome-' + Date.now(),
         role: 'assistant',
         content: `🎯 Olá ${userName}! Bem-vindo à **Mentoria Extraordinários**!
 
@@ -69,12 +93,11 @@ Sou seu assistente de IA especializado em transformar pessoas extraordinárias e
 Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
         timestamp: new Date()
       }
-      setMessages([welcomeMessage])
-      setLoadingMessages(false)
+      
+      // Adicionar mensagem usando o hook
+      addConversation('', welcomeMessage.content)
     }
-
-    loadWelcomeMessage()
-  }, [userData?.name])
+  }, [loadingMessages, messages.length, userData?.name, userId, addConversation])
 
   const handleLogout = async () => {
     try {
@@ -86,39 +109,44 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
     }
   }
 
-  const sendToWebhook = async (message: string) => {
-    try {
-      setIsLoading(true)
+  const handleSendMessage = async () => {
+    if (!input.trim() || isLoading) return
 
-      // Send to webhook (n8n)
-      const response = await fetch("/api/webhook", {
+    const messageToSend = input.trim()
+    setInput("") // Limpar input imediatamente
+    setIsLoading(true)
+
+    try {
+      // 1. Adicionar mensagem do usuário imediatamente ao cache local
+      await addConversation(messageToSend, "")
+
+      // 2. Enviar diretamente para o webhook externo (n8n)
+      const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://webhook.digabot.com.br/webhook/cfdf2bf1-e1cf-4fa3-adda-7e663aad2961'
+      
+      const response = await fetch(webhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId,
-          message,
-          userData: {
+          message: messageToSend,
+          user: {
+            id: userId,
             name: userData?.name || 'Usuário',
             email: userData?.email || '',
             role: userData?.role || 'normal'
-          }
+          },
+          timestamp: new Date().toISOString(),
+          source: 'mentoria-extraordinarios-static'
         }),
       })
 
       if (response.ok) {
         const data = await response.json()
 
-        // Add AI response to messages
         if (data.output) {
-          const aiMessage: Message = {
-            id: Date.now().toString() + "-ai",
-            role: "assistant",
-            content: data.output,
-            timestamp: new Date(),
-          }
-          setMessages((prev) => [...prev, aiMessage])
+          // 3. Adicionar resposta da IA ao cache local (substitui a mensagem vazia)
+          await addConversation(messageToSend, data.output)
         }
       } else {
         throw new Error(`Erro na resposta do webhook: ${response.status}`)
@@ -127,33 +155,11 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
       console.error("Erro ao processar mensagem:", error)
       toast.error('Erro ao processar mensagem')
 
-      // Add error message
-      const errorMessage: Message = {
-        id: Date.now().toString() + "-error",
-        role: "assistant",
-        content: "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.",
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, errorMessage])
+      // Adicionar mensagem de erro
+      await addConversation(messageToSend, "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.")
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, userMessage])
-    setInput("")
-
-    await sendToWebhook(input)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -180,6 +186,12 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
             </div>
             <div>
               <h1 className="text-lg font-semibold text-white">Mentoria Extraordinários</h1>
+              {isSyncing && (
+                <p className="text-xs text-yellow-400 flex items-center gap-1">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Sincronizando...
+                </p>
+              )}
             </div>
           </div>
           <Button
