@@ -1,8 +1,8 @@
 # 🚀 Build Estático - Mentoria Extraordinários
 
-## ✅ Status: COMPLETO
+## ✅ Status: COMPLETO E ATUALIZADO
 
-O build estático foi criado com sucesso! Todas as funcionalidades foram adaptadas para funcionar sem server-side rendering.
+O build estático foi recriado com sucesso! Sistema de mensagens corrigido para salvar tanto mensagens do usuário quanto da IA.
 
 ## 📁 Estrutura Final
 
@@ -31,10 +31,11 @@ mentoria extraordinarios/
 - ✅ Implementado: Chamada direta para n8n
 - 🔗 URL: `https://webhook.digabot.com.br/webhook/cfdf2bf1-e1cf-4fa3-adda-7e663aad2961`
 
-### 2. **Cache Local Primeiro**
+### 2. **Sistema de Mensagens Corrigido**
+- ✅ Salva mensagens do usuário E da IA
 - ✅ localStorage para persistência imediata
 - ✅ Sync com Supabase em background
-- ✅ Funciona offline parcialmente
+- ✅ Lógica simplificada e confiável
 
 ### 3. **Configuração Estática**
 - ✅ `output: 'export'` no next.config.mjs
