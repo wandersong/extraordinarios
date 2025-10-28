@@ -40,7 +40,14 @@ export function TestSupabaseConnection() {
 
       if (tableError) {
         setStatus('❌ Erro ao acessar tabela user_messages: ' + tableError.message)
-        setDetails(tableError)
+        setDetails({
+          error: tableError,
+          possibleSolutions: [
+            '1. Execute fix-rls-policies.sql no Supabase',
+            '2. Ou temporariamente execute disable-rls-temp.sql',
+            '3. Verifique se as políticas RLS não tem recursão'
+          ]
+        })
         return
       }
 
