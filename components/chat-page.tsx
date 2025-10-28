@@ -39,7 +39,6 @@ export function ChatPage({ userId, userData }: ChatPageProps) {
     messages, 
     isLoading: loadingMessages, 
     isSyncing, 
-    addConversation,
     addMessage 
   } = useMessages(userId)
 
@@ -95,13 +94,13 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
         timestamp: new Date()
       }
       
-      // Adicionar mensagem usando o hook
+      // Adicionar mensagem de boas-vindas
       addMessage({
         role: 'assistant',
         content: welcomeMessage.content
       })
     }
-  }, [loadingMessages, messages.length, userData?.name, userId, addConversation])
+  }, [loadingMessages, messages.length, userData?.name, userId, addMessage])
 
   const handleLogout = async () => {
     try {
@@ -120,16 +119,16 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
     setInput("") // Limpar input imediatamente
     setIsLoading(true)
 
-    try {
-      // 1. Adicionar mensagem do usuário primeiro
-      console.log('🟢 Adicionando mensagem do usuário:', messageToSend)
-      const userMessage = await addMessage({
-        role: 'user',
-        content: messageToSend
-      })
-      console.log('🟢 Mensagem do usuário adicionada:', userMessage)
+    console.log('� Enviando mensagem:', messageToSend)
 
-      // 2. Enviar diretamente para o webhook externo (n8n)
+    // 1. Adicionar mensagem do usuário IMEDIATAMENTE
+    addMessage({
+      role: 'user',
+      content: messageToSend
+    })
+
+    try {
+      // 2. Enviar para webhook n8n
       const webhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL || 'https://webhook.digabot.com.br/webhook/cfdf2bf1-e1cf-4fa3-adda-7e663aad2961'
       
       const response = await fetch(webhookUrl, {
@@ -152,23 +151,24 @@ Como posso ajudá-lo hoje em sua jornada extraordinária? 🚀`,
 
       if (response.ok) {
         const data = await response.json()
+        console.log('📥 Resposta recebida:', data)
 
         if (data.output) {
           // 3. Adicionar resposta da IA
-          await addMessage({
+          addMessage({
             role: 'assistant',
             content: data.output
           })
         }
       } else {
-        throw new Error(`Erro na resposta do webhook: ${response.status}`)
+        throw new Error(`Erro HTTP ${response.status}`)
       }
     } catch (error) {
-      console.error("Erro ao processar mensagem:", error)
+      console.error("❌ Erro ao processar mensagem:", error)
       toast.error('Erro ao processar mensagem')
 
       // Adicionar mensagem de erro
-      await addMessage({
+      addMessage({
         role: 'assistant',
         content: "Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente."
       })

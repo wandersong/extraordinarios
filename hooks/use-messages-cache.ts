@@ -6,7 +6,7 @@ interface Message {
   role: "user" | "assistant" | "system"
   content: string
   timestamp: Date
-  synced?: boolean // Indica se foi sincronizado com o Supabase
+  synced?: boolean
 }
 
 export function useMessages(userId: string) {
@@ -211,31 +211,30 @@ export function useMessages(userId: string) {
     }
   }
 
-  // Adicionar nova mensagem
-  const addMessage = async (message: Omit<Message, 'id' | 'timestamp' | 'synced'>) => {
-    console.log('🔵 addMessage chamado:', message)
+  // Adicionar nova mensagem (VERSÃO CORRIGIDA)
+  const addMessage = (message: Omit<Message, 'id' | 'timestamp' | 'synced'>) => {
+    console.log('� Adicionando mensagem:', message.role, '-', message.content.substring(0, 50))
     
     const newMessage: Message = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date(),
       synced: false,
       ...message
     }
 
-    // 1. Adicionar ao estado imediatamente
-    const updatedMessages = [...messages, newMessage]
-    console.log('🔵 Atualizando state com', updatedMessages.length, 'mensagens')
-    setMessages(updatedMessages)
-
-    // 2. Salvar no localStorage imediatamente
-    console.log('🔵 Salvando no localStorage...')
-    saveLocalMessages(updatedMessages)
-
-    // 3. Sincronizar com Supabase em background (com delay maior)
-    setTimeout(() => {
-      console.log('🔵 Iniciando sync com Supabase...')
-      syncWithSupabase(updatedMessages)
-    }, 1000) // 1 segundo de delay para evitar conflitos
+    // Atualizar estado imediatamente
+    setMessages(prev => {
+      const updated = [...prev, newMessage]
+      console.log('� Total de mensagens após adicionar:', updated.length)
+      
+      // Salvar no localStorage
+      saveLocalMessages(updated)
+      
+      // Sync com Supabase (sem await para não bloquear)
+      setTimeout(() => syncWithSupabase(updated), 2000)
+      
+      return updated
+    })
 
     return newMessage
   }
@@ -301,9 +300,6 @@ export function useMessages(userId: string) {
     messages,
     isLoading,
     isSyncing,
-    addMessage,
-    addConversation,
-    syncWithSupabase: () => syncWithSupabase(messages),
-    refreshFromSupabase: loadMessages
+    addMessage
   }
 }
